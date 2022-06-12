@@ -1,6 +1,10 @@
-FROM python:3.8.3-alpine
-RUN  mkdir WORK_REPO
-RUN  cd  WORK_REPO
-WORKDIR  /WORK_REPO
-ADD hello_world.py .
-CMD ["python", "-u", "hello_world.py"]
+FROM python:3.8-slim-buster
+
+WORKDIR /app/
+
+COPY requirements.txt requirements.txt
+RUN pip3 install -r requirements.txt
+
+COPY . .
+
+CMD [ "python3", "-m" , "flask", "run", "--host=0.0.0.0", "--port=80"]

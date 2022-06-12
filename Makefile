@@ -7,7 +7,7 @@ APPLICATIONS_COMMON_ROOT_PATH			:= $(shell dirname $(realpath $(abspath $(lastwo
 -include Makefile.vars.local
 -include Makefile.project
 
-ECR_IMAGE_REPOSITORY = "${AWS_IMAGE_REPOSITORY}"
+ECR_IMAGE_REPOSITORY = ${AWS_IMAGE_REPOSITORY}
 
 
 PROJECT_BUILD_DATE								:= $(shell date -u +"%Y%m%d.%H%M%S")
@@ -55,8 +55,9 @@ PROJECT_BUILD_LABEL								:= $(PROJECT_VERSION)$(PROJECT_GIT_WORKSPACE_DIRTY)$(
 RELEASE_IMAGE_BUILD_OPTS					:= --force-rm
 
 IMAGE_NAME												?= $(NAME)
-IMAGE_REPOSITORY									?= $(ECR_IMAGE_REPOSITORY)/$(IMAGE_NAME)
-IMAGE_DOCKERFILE									?= ./Dockerfile
+IMAGE_ENVIRONMENT									?= ${PROJECT_ENVIRONMENT}
+IMAGE_REPOSITORY									?= $(ECR_IMAGE_REPOSITORY)/$(PROJECT_NAME)/$(IMAGE_ENVIRONMENT)/$(IMAGE_NAME)
+IMAGE_DOCKERFILE									?= "${PROJECT_IMAGE_DOCKERFILE}"
 IMAGE_CONTEXT											?= .
 IMAGE_TAG													?= latest
 IMAGE_UNIQUE_TAG									?= $(PROJECT_BUILD_DATE)

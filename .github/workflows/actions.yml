@@ -8,6 +8,8 @@ on:
 env:
   AWS_DEFAULT_REGION: ${{secrets.AWS_DEFAULT_REGION}}
   AWS_IMAGE_REPOSITORY: ${{secrets.AWS_IMAGE_REPOSITORY}}
+  PROJECT_ENVIRONMENT: "development"
+  PROJECT_IMAGE_DOCKERFILE: "Dockerfile"
 
 jobs:
   docker-build:
@@ -17,6 +19,9 @@ jobs:
     steps:
       - name: checkout code
         uses: actions/checkout@v2
+
+#      - name: Copy files
+#        run: cp -r backend/* ./
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
