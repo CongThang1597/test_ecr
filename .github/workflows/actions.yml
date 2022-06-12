@@ -3,7 +3,7 @@ name: Docker Job Build
 on:
   push:
     branches:
-      - develop
+      - feature/test
 
 env:
   AWS_DEFAULT_REGION: ${{secrets.AWS_DEFAULT_REGION}}
