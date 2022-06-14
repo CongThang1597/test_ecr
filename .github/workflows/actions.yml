@@ -47,3 +47,4 @@ jobs:
           CLUSTER_NAME: tracking-development
           SERVICE_NAME: api
           DESIRED_COUNT: 1
+          ENV_FILE: ./envs/dev.json
