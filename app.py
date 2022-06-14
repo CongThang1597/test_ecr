@@ -9,9 +9,9 @@ def hello_geek():
 
 
 @app.route('/health')
-def hello_geek():
+def health():
     return 'success'
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=8000)
