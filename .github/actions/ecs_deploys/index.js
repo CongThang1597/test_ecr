@@ -2,7 +2,6 @@ const path = require('path');
 const core = require('@actions/core');
 const aws = require('aws-sdk');
 const fs = require('fs');
-const util = require('util');
 
 async function readJsonFile(envFile) {
     try {
@@ -94,13 +93,7 @@ async function updateEcsService(ecs, clusterName, service, taskDefArn, forceNewD
 async function run() {
     try {
 
-        // let awsRegion = core.getInput('AWS_REGION', {required: true});
-
-        const awsRegion = 'ap-southeast-1';
-        const awsAccountId = '872692067237';
-        let clusterName = 'tracking-development';
-        let serviceName = 'tracking-development-api-service';
-        let envFile = './envs/dev.json';
+        let awsRegion = core.getInput('AWS_REGION', {required: true});
 
         aws.config.update({region: awsRegion});
 
@@ -108,17 +101,17 @@ async function run() {
             customUserAgent: 'amazon-ecs-deploy-task-definition-for-github-actions'
         });
 
-        // let awsAccountId = core.getInput('AWS_ACCOUNT_ID', {required: true});
+        let awsAccountId = core.getInput('AWS_ACCOUNT_ID', {required: true});
 
-        // let clusterName = core.getInput('CLUSTER_NAME', {required: true});
-        //
-        // let serviceName = core.getInput('SERVICE_NAME', {required: true});
+        let clusterName = core.getInput('CLUSTER_NAME', {required: true});
+
+        let serviceName = core.getInput('SERVICE_NAME', {required: true});
 
         const desiredCount = core.getInput('DESIRED_COUNT', {required: false}) || 1;
 
-        // const envFile = core.getInput('ENV_FILE', {required: false}) || null;
+        const envFile = core.getInput('ENV_FILE', {required: false}) || null;
 
-        // serviceName = `${clusterName}-${serviceName}-service`
+        serviceName = `${clusterName}-${serviceName}-service`
 
         let ecsTaskName = `${serviceName}-task`
 
@@ -174,6 +167,3 @@ async function run() {
 }
 
 module.exports = run;
-
-
-run()
