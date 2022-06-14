@@ -2,12 +2,15 @@ const path = require('path');
 const core = require('@actions/core');
 const aws = require('aws-sdk');
 const fs = require('fs');
-
-aws.config.update({region: 'ap-southeast-1'});
+const util = require('util');
 
 async function readJsonFile(envFile) {
-    let rawData = await fs.readFile(envFile);
-    return JSON.parse(rawData)
+    try {
+        const data = await fs.promises.readFile(envFile, 'utf8')
+        return JSON.parse(data)
+    } catch (e) {
+        throw e
+    }
 }
 
 
@@ -20,14 +23,14 @@ async function renderEnvironment(envFile) {
         core.setFailed("Env file is supported type only json file.");
     }
 
-    let datas = await readJsonFile(envFile)
+    let data = await readJsonFile(envFile)
 
     let envs = [];
 
-    for (const [key, value] of datas) {
+    for (const key in data) {
         envs.push({
             'name': key,
-            'value': value,
+            'value': data[key],
         })
     }
 
@@ -90,23 +93,32 @@ async function updateEcsService(ecs, clusterName, service, taskDefArn, forceNewD
 
 async function run() {
     try {
+
+        // let awsRegion = core.getInput('AWS_REGION', {required: true});
+
+        const awsRegion = 'ap-southeast-1';
+        const awsAccountId = '872692067237';
+        let clusterName = 'tracking-development';
+        let serviceName = 'tracking-development-api-service';
+        let envFile = './envs/dev.json';
+
+        aws.config.update({region: awsRegion});
+
         const ecs = new aws.ECS({
             customUserAgent: 'amazon-ecs-deploy-task-definition-for-github-actions'
         });
 
-        let awsAccountId = core.getInput('AWS_ACCOUNT_ID', {required: true});
+        // let awsAccountId = core.getInput('AWS_ACCOUNT_ID', {required: true});
 
-        let awsRegion = core.getInput('AWS_REGION', {required: true});
-
-        let clusterName = core.getInput('CLUSTER_NAME', {required: true});
-
-        let serviceName = core.getInput('SERVICE_NAME', {required: true});
+        // let clusterName = core.getInput('CLUSTER_NAME', {required: true});
+        //
+        // let serviceName = core.getInput('SERVICE_NAME', {required: true});
 
         const desiredCount = core.getInput('DESIRED_COUNT', {required: false}) || 1;
 
-        const envFile = core.getInput('ENV_FILE', {required: false}) || null;
+        // const envFile = core.getInput('ENV_FILE', {required: false}) || null;
 
-        serviceName = `${clusterName}-${serviceName}-service`
+        // serviceName = `${clusterName}-${serviceName}-service`
 
         let ecsTaskName = `${serviceName}-task`
 
@@ -162,3 +174,6 @@ async function run() {
 }
 
 module.exports = run;
+
+
+run()
