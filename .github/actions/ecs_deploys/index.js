@@ -30,7 +30,7 @@ async function renderEnvironment(envFile) {
     for (const key in data) {
         envs.push({
             'name': key,
-            'value': data[key],
+            'value': String(data[key]),
         })
     }
 
