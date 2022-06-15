@@ -5,15 +5,18 @@ const fs = require('fs');
 
 async function readJsonFile(envFile) {
     try {
+        core.info(`Read env from ${envFile}`);
         const data = await fs.promises.readFile(envFile, 'utf8')
         return JSON.parse(data)
     } catch (e) {
+        core.info(`Read env error: ${e.message}`);
         throw e
     }
 }
 
 
 async function renderEnvironment(envFile) {
+    core.info(`Build task definition environment.`);
     if (!envFile) {
         return []
     }
@@ -33,10 +36,14 @@ async function renderEnvironment(envFile) {
         })
     }
 
+    core.info(`Build task definition environment success.`);
+
     return envs
 }
 
 async function renderTaskDefinition(taskDefinitionArn, envFile) {
+
+    core.info(`Render Task definition template started.`);
 
     const ecs = new aws.ECS()
     const params = {
@@ -46,6 +53,9 @@ async function renderTaskDefinition(taskDefinitionArn, envFile) {
     const envs = await renderEnvironment(envFile)
 
     try {
+
+        core.info(`Describe Task Definition started.`);
+
         const taskDefinitionObject = await ecs.describeTaskDefinition(params).promise();
         let containerDefinitions = taskDefinitionObject.taskDefinition.containerDefinitions
         containerDefinitions = containerDefinitions.map(item => {
@@ -73,12 +83,13 @@ async function renderTaskDefinition(taskDefinitionArn, envFile) {
 
         }
     } catch (e) {
+        core.info(`Describe Task Definition error: ${e.message}`);
         core.setFailed(e.stack);
     }
 }
 
 async function updateEcsService(ecs, clusterName, service, taskDefArn, forceNewDeployment, desiredCount) {
-    core.debug('Updating the service');
+    core.info('Updating the service');
     await ecs.updateService({
         cluster: clusterName,
         service: service,
@@ -92,6 +103,9 @@ async function updateEcsService(ecs, clusterName, service, taskDefArn, forceNewD
 
 async function run() {
     try {
+
+        core.info(`Initiate deployment action`);
+        core.info(`==========================`);
 
         let awsRegion = core.getInput('AWS_REGION', {required: true});
 
@@ -117,27 +131,32 @@ async function run() {
 
         let taskDefinitionArn = `arn:aws:ecs:${awsRegion}:${awsAccountId}:task-definition/${ecsTaskName}`
 
-        const forceNewDeployInput = core.getInput('force-new-deployment', {required: false}) || 'false';
+        const forceNewDeployInput = core.getInput('FORCE_NEW_DEPLOYMENT', {required: false}) || 'false';
         const forceNewDeployment = forceNewDeployInput.toLowerCase() === 'false';
 
-        core.debug('Registering the task definition');
+        core.info(`Cluster Name: ${clusterName}`);
+        core.info(`Service Name: ${serviceName}`);
+        core.info(`Desired Count: ${desiredCount}`);
+        core.info(`Force New Deployment: ${forceNewDeployment}`);
+        core.info(`==========================`);
+
+        core.info('Registering the task definition');
         let registerResponse;
         let taskDefContents = await renderTaskDefinition(taskDefinitionArn, envFile);
         try {
             registerResponse = await ecs.registerTaskDefinition(taskDefContents).promise();
         } catch (error) {
             core.setFailed("Failed to register task definition in ECS: " + error.message);
-            core.debug("Task definition contents:");
-            core.debug(JSON.stringify(taskDefContents, undefined, 4));
+            core.info("Task definition contents:");
+            core.info(JSON.stringify(taskDefContents, undefined, 4));
             throw(error);
         }
 
         const taskDefArn = registerResponse.taskDefinition.taskDefinitionArn;
-        core.setOutput('task-definition-arn', taskDefArn);
 
         if (serviceName) {
             clusterName = clusterName ? clusterName : 'default';
-
+            core.info(`Describe Services: ${serviceName}`);
             const describeResponse = await ecs.describeServices({
                 services: [serviceName], cluster: clusterName
             }).promise();
@@ -162,7 +181,7 @@ async function run() {
         }
     } catch (error) {
         core.setFailed(error.message);
-        core.debug(error.stack);
+        core.info(error.message);
     }
 }
 

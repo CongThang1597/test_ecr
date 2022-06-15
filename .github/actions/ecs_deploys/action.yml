@@ -21,6 +21,9 @@ inputs:
   ENV_FILE:
     description: "ENV_FILE"
     required: false
+  FORCE_NEW_DEPLOYMENT:
+    description: "FORCE_NEW_DEPLOYMENT"
+    required: false
 
 runs:
   using: "node12"
