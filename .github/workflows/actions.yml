@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - develop
+      - action-deploy
 
 env:
   AWS_DEFAULT_REGION: ${{secrets.AWS_DEFAULT_REGION}}
@@ -33,11 +34,11 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v1
 
-      - name: Build artifacts for project
-        run: make docker-build-image
-
-      - name: Push Image
-        run: make docker-push-image
+#      - name: Build artifacts for project
+#        run: make docker-build-image
+#
+#      - name: Push Image
+#        run: make docker-push-image
 
       - name: Deploy to Amazon ECS
         uses: ./.github/actions/ecs_deploys
@@ -45,6 +46,7 @@ jobs:
           AWS_ACCOUNT_ID: ${{secrets.AWS_ACCOUNT_ID}}
           AWS_REGION: ${{secrets.AWS_DEFAULT_REGION}}
           CLUSTER_NAME: tracking-development
+          AWS_IMAGE_REPOSITORY: tracking-development
           SERVICE_NAME: api
           DESIRED_COUNT: 1
           ENV_FILE: ./envs/dev.json

@@ -10,10 +10,32 @@ async function readJsonFile(envFile) {
         return JSON.parse(data)
     } catch (e) {
         core.info(`Read env error: ${e.message}`);
+        core.setFailed(e.message);
         throw e
     }
 }
 
+
+async function readEnvFile(envFile) {
+    try {
+        core.info(`Read env from ${envFile}`);
+        let data = await fs.promises.readFile(envFile, 'utf8')
+        data = data.split('\n');
+        let env = {};
+        data.forEach(item => {
+            let newItem = item.trim()
+            if (newItem && !newItem.startsWith('#')) {
+                newItem = item.trim().split('=');
+                env[newItem[0]] = newItem[1] ? String(newItem[1]) : ""
+            }
+        })
+        return env
+    } catch (e) {
+        core.info(`Read env error: ${e.message}`);
+        core.setFailed(e.message);
+        throw e
+    }
+}
 
 async function renderEnvironment(envFile) {
     core.info(`Build task definition environment.`);
@@ -21,11 +43,15 @@ async function renderEnvironment(envFile) {
         return []
     }
     const ext = path.extname(envFile)
-    if (!['.json'].includes(ext)) {
-        core.setFailed("Env file is supported type only json file.");
+    if (!['.json', ''].includes(ext)) {
+        core.setFailed("Env file is supported type only json, env file.");
     }
-
-    let data = await readJsonFile(envFile)
+    let data = {};
+    if (ext === '.json') {
+        data = await readJsonFile(envFile)
+    } else if (envFile.includes('.env')) {
+        data = await readEnvFile(envFile)
+    }
 
     let envs = [];
 
@@ -41,7 +67,7 @@ async function renderEnvironment(envFile) {
     return envs
 }
 
-async function renderTaskDefinition(taskDefinitionArn, envFile) {
+async function renderTaskDefinition(taskDefinitionArn, envFile, taskImageArn) {
 
     core.info(`Render Task definition template started.`);
 
@@ -61,7 +87,7 @@ async function renderTaskDefinition(taskDefinitionArn, envFile) {
         containerDefinitions = containerDefinitions.map(item => {
             return {
                 name: item.name,
-                image: item.image,
+                image: taskImageArn,
                 cpu: item.cpu,
                 memory: item.memory,
                 portMappings: item.portMappings,
@@ -85,6 +111,7 @@ async function renderTaskDefinition(taskDefinitionArn, envFile) {
     } catch (e) {
         core.info(`Describe Task Definition error: ${e.message}`);
         core.setFailed(e.stack);
+        throw e;
     }
 }
 
@@ -109,6 +136,8 @@ async function run() {
 
         let awsRegion = core.getInput('AWS_REGION', {required: true});
 
+        core.info(`Aws Region: ${awsRegion}`);
+
         aws.config.update({region: awsRegion});
 
         const ecs = new aws.ECS({
@@ -119,30 +148,47 @@ async function run() {
 
         let clusterName = core.getInput('CLUSTER_NAME', {required: true});
 
+        core.info(`clusterName: ${clusterName}`);
+
         let serviceName = core.getInput('SERVICE_NAME', {required: true});
+
+        core.info(`serviceName: ${serviceName}`);
+
+        const awsImageRepository = core.getInput('AWS_IMAGE_REPOSITORY', {required: true});
+
+        core.info(`awsImageRepository: ${awsImageRepository}`);
 
         const desiredCount = core.getInput('DESIRED_COUNT', {required: false}) || 1;
 
+        core.info(`desiredCount: ${desiredCount}`);
+
         const envFile = core.getInput('ENV_FILE', {required: false}) || null;
 
-        serviceName = `${clusterName}-${serviceName}-service`
+        core.info(`envFile: ${envFile}`);
 
-        let ecsTaskName = `${serviceName}-task`
+        let clusterNameArr = clusterName.split('-').join('/');
 
-        let taskDefinitionArn = `arn:aws:ecs:${awsRegion}:${awsAccountId}:task-definition/${ecsTaskName}`
+        let taskImageArn = `${awsImageRepository}/${clusterNameArr}/${serviceName}:latest`;
+
+        core.info(`taskImageArn: ${taskImageArn}`);
+
+        serviceName = `${clusterName}-${serviceName}-service`;
+
+        let ecsTaskName = `${serviceName}-task`;
+
+        let taskDefinitionArn = `arn:aws:ecs:${awsRegion}:${awsAccountId}:task-definition/${ecsTaskName}`;
+
+        core.info(`taskDefinitionArn: ${taskDefinitionArn}`);
 
         const forceNewDeployInput = core.getInput('FORCE_NEW_DEPLOYMENT', {required: false}) || 'false';
         const forceNewDeployment = forceNewDeployInput.toLowerCase() === 'false';
 
-        core.info(`Cluster Name: ${clusterName}`);
-        core.info(`Service Name: ${serviceName}`);
-        core.info(`Desired Count: ${desiredCount}`);
         core.info(`Force New Deployment: ${forceNewDeployment}`);
         core.info(`==========================`);
 
         core.info('Registering the task definition');
         let registerResponse;
-        let taskDefContents = await renderTaskDefinition(taskDefinitionArn, envFile);
+        let taskDefContents = await renderTaskDefinition(taskDefinitionArn, envFile, taskImageArn);
         try {
             registerResponse = await ecs.registerTaskDefinition(taskDefContents).promise();
         } catch (error) {
@@ -163,17 +209,20 @@ async function run() {
 
             if (describeResponse.failures && describeResponse.failures.length > 0) {
                 const failure = describeResponse.failures[0];
+                core.setFailed(`${failure.arn} is ${failure.reason}`);
                 throw new Error(`${failure.arn} is ${failure.reason}`);
             }
 
             const serviceResponse = describeResponse.services[0];
             if (serviceResponse.status != 'ACTIVE') {
+                core.setFailed(`Service is ${serviceResponse.status}`);
                 throw new Error(`Service is ${serviceResponse.status}`);
             }
 
             if (!serviceResponse.deploymentController) {
                 await updateEcsService(ecs, clusterName, serviceName, taskDefArn, forceNewDeployment, desiredCount);
             } else {
+                core.setFailed(`Unsupported deployment controller: ${serviceResponse.deploymentController.type}`);
                 throw new Error(`Unsupported deployment controller: ${serviceResponse.deploymentController.type}`);
             }
         } else {
@@ -182,7 +231,10 @@ async function run() {
     } catch (error) {
         core.setFailed(error.message);
         core.info(error.message);
+        throw error;
     }
 }
 
 module.exports = run;
+
+run()
