@@ -40,9 +40,9 @@ jobs:
 
       - name: Build artifacts for project
         run: make docker-build-image
-#
-#      - name: Push Image
-#        run: make docker-push-image
+
+      - name: Push Image
+        run: make docker-push-image
 
       - name: Deploy to Amazon ECS
         uses: ./.build-utils/actions/ecs_deploys
