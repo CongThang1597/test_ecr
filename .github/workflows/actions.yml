@@ -50,7 +50,7 @@ jobs:
           AWS_ACCOUNT_ID: ${{secrets.AWS_ACCOUNT_ID}}
           AWS_REGION: ${{secrets.AWS_DEFAULT_REGION}}
           CLUSTER_NAME: tracking-development
-          AWS_IMAGE_REPOSITORY: tracking-development
+          AWS_IMAGE_REPOSITORY: ${{secrets.AWS_IMAGE_REPOSITORY}}
           SERVICE_NAME: api
           DESIRED_COUNT: 1
           ENV_FILE: ./envs/dev.json
